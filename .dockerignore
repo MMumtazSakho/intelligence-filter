@@ -1,0 +1,34 @@
+# Exclude ADK directory per instruction
+ADK/
+ADK
+
+# Exclude local environment and secret variables
+.env
+.env.*
+
+# Exclude virtual environments
+.venv/
+venv/
+ENV/
+
+# Python cache and temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git and OS metadata
+.git/
+.gitignore
+.DS_Store
+*.swp
+*.swo
+
+# IDE and brain metadata
+.system_generated/
+.gemini/
+.vscode/
+.idea/

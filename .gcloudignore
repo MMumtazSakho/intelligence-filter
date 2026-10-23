@@ -1,0 +1,10 @@
+#!include:.dockerignore
+
+# Explicit exclusions for gcloud packaging
+ADK/
+ADK
+.env
+.venv/
+__pycache__/
+.git/
+.DS_Store
