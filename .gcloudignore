@@ -8,3 +8,4 @@ ADK
 __pycache__/
 .git/
 .DS_Store
+docs/

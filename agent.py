@@ -99,24 +99,7 @@ def create_adk_tools(ctx: StockScreenerContext):
             "sample_stocks": rows[:8]
         })
 
-    def get_column_stats(column_name: str) -> str:
-        """Mendapatkan statistik pasar (min, avg, max) untuk kolom tertentu pada tabel stocks."""
-        allowed_cols = ["current_ratio", "der", "dividend_yield", "fcf_ttm", "gross_margin", "net_profit_ttm", "roe_ttm"]
-        if column_name not in allowed_cols:
-            return json.dumps({"error": f"Kolom tidak valid. Pilihan: {allowed_cols}"})
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute(f"SELECT MIN({column_name}), AVG({column_name}), MAX({column_name}) FROM stocks")
-            row = cursor.fetchone()
-            stats = {
-                "column": column_name,
-                "min": round(row[0], 2) if row[0] is not None else None,
-                "avg": round(row[1], 2) if row[1] is not None else None,
-                "max": round(row[2], 2) if row[2] is not None else None,
-            }
-            return json.dumps(stats)
-
-    return run_sql, get_column_stats
+    return run_sql
 
 # -------------------------------------------------------------
 # MODE 1: ONE-SHOT (Google ADK LlmAgent)
@@ -126,7 +109,7 @@ def run_oneshot_screening(user_prompt: str) -> Dict[str, Any]:
     Mode One-Shot menggunakan Google ADK LlmAgent untuk menghasilkan SQL dalam 1 langkah.
     """
     ctx = StockScreenerContext()
-    run_sql_tool, _ = create_adk_tools(ctx)
+    run_sql_tool = create_adk_tools(ctx)
 
     agent = LlmAgent(
         name="OneShotScreener",
@@ -194,7 +177,7 @@ def run_multistep_screening(user_prompt: str) -> Dict[str, Any]:
     Mode Multistep menggunakan Google ADK LlmAgent dengan multi-turn reasoning dan executive summary.
     """
     ctx = StockScreenerContext()
-    run_sql_tool, get_stats_tool = create_adk_tools(ctx)
+    run_sql_tool = create_adk_tools(ctx)
 
     agent = LlmAgent(
         name="MultistepScreener",
@@ -202,12 +185,11 @@ def run_multistep_screening(user_prompt: str) -> Dict[str, Any]:
         instruction=f"""Anda adalah Senior Equity Research Analyst & Quantitative Screener Agent berbasis Google ADK.
 Tugas Anda:
 1. Menganalisis kriteria screening dari pengguna.
-2. Gunakan `get_column_stats` jika perlu mengetahui rata-rata distribusi rasio di pasar.
-3. Gunakan `run_sql` untuk mengeksekusi query SQLite pada tabel stocks. Saat memanggil `run_sql`, WAJIB sertakan parameter `query` dan `info` (penjelasan singkat bahasa manusia tentang apa yang dilakukan query tersebut, kriteria filter, dan tujuan penyaringan untuk user).
-4. ATURAN UTAMA QUERY SQL: Query SQL terakhir yang Anda panggil melalui `run_sql` WAJIB merupakan representasi final dari jawaban atas pertanyaan/kriteria screening pengguna. Hasil tabel data yang ditampilkan kepada pengguna di aplikasi diambil langsung dari hasil query SQL terakhir ini. Jangan menjalankan query tambahan setelah query jawaban final tersebut.
-5. Tuliskan Executive Summary komprehensif untuk investor (Saham Terpilih, Kekuatan Finansial, Catatan Risiko, dan Rekomendasi).
+2. Gunakan `run_sql` untuk mengeksekusi query SQLite pada tabel stocks (baik untuk memeriksa agregasi metrik jika perlu, maupun memfilter saham). Saat memanggil `run_sql`, WAJIB sertakan parameter `query` dan `info` (penjelasan singkat bahasa manusia tentang apa yang dilakukan query tersebut, kriteria filter, dan tujuan penyaringan untuk user).
+3. ATURAN UTAMA QUERY SQL: Query SQL terakhir yang Anda panggil melalui `run_sql` WAJIB merupakan representasi final dari jawaban atas pertanyaan/kriteria screening pengguna. Hasil tabel data yang ditampilkan kepada pengguna di aplikasi diambil langsung dari hasil query SQL terakhir ini. Jangan menjalankan query tambahan setelah query jawaban final tersebut.
+4. Tuliskan Executive Summary komprehensif untuk investor (Saham Terpilih, Kekuatan Finansial, Catatan Risiko, dan Rekomendasi).
 {SCHEMA_DESCRIPTION}""",
-        tools=[run_sql_tool, get_stats_tool]
+        tools=[run_sql_tool]
     )
 
     runner = InMemoryRunner(app_name=APP_NAME, agent=agent)
@@ -258,7 +240,7 @@ def run_multistep_screening_stream(user_prompt: str):
     Generator streaming Google ADK events secara real-time ke web UI.
     """
     ctx = StockScreenerContext()
-    run_sql_tool, get_stats_tool = create_adk_tools(ctx)
+    run_sql_tool = create_adk_tools(ctx)
 
     agent = LlmAgent(
         name="MultistepScreener",
@@ -266,12 +248,11 @@ def run_multistep_screening_stream(user_prompt: str):
         instruction=f"""Anda adalah Senior Equity Research Analyst & Quantitative Screener Agent berbasis Google ADK.
 Tugas Anda:
 1. Menganalisis kriteria screening dari pengguna.
-2. Gunakan `get_column_stats` jika perlu mengetahui rata-rata distribusi rasio di pasar.
-3. Gunakan `run_sql` untuk mengeksekusi query SQLite pada tabel stocks. Saat memanggil `run_sql`, WAJIB sertakan parameter `query` dan `info` (penjelasan singkat bahasa manusia tentang apa yang dilakukan query tersebut, kriteria filter, dan tujuan penyaringan untuk user).
-4. ATURAN UTAMA QUERY SQL: Query SQL terakhir yang Anda panggil melalui `run_sql` WAJIB merupakan representasi final dari jawaban atas pertanyaan/kriteria screening pengguna. Hasil tabel data yang ditampilkan kepada pengguna di aplikasi diambil langsung dari hasil query SQL terakhir ini. Jangan menjalankan query tambahan setelah query jawaban final tersebut.
-5. Tuliskan Executive Summary komprehensif untuk investor (Saham Terpilih, Kekuatan Finansial, Catatan Risiko, dan Rekomendasi).
+2. Gunakan `run_sql` untuk mengeksekusi query SQLite pada tabel stocks (baik untuk memeriksa agregasi metrik jika perlu, maupun memfilter saham). Saat memanggil `run_sql`, WAJIB sertakan parameter `query` dan `info` (penjelasan singkat bahasa manusia tentang apa yang dilakukan query tersebut, kriteria filter, dan tujuan penyaringan untuk user).
+3. ATURAN UTAMA QUERY SQL: Query SQL terakhir yang Anda panggil melalui `run_sql` WAJIB merupakan representasi final dari jawaban atas pertanyaan/kriteria screening pengguna. Hasil tabel data yang ditampilkan kepada pengguna di aplikasi diambil langsung dari hasil query SQL terakhir ini. Jangan menjalankan query tambahan setelah query jawaban final tersebut.
+4. Tuliskan Executive Summary komprehensif untuk investor (Saham Terpilih, Kekuatan Finansial, Catatan Risiko, dan Rekomendasi).
 {SCHEMA_DESCRIPTION}""",
-        tools=[run_sql_tool, get_stats_tool]
+        tools=[run_sql_tool]
     )
 
     runner = InMemoryRunner(app_name=APP_NAME, agent=agent)
@@ -314,9 +295,6 @@ Tugas Anda:
                 if tool_name == "run_sql":
                     query_info = (tool_args.get("info") or "").strip() or "Menjalankan query ke database"
                     yield {"type": "step_start", "info": query_info}
-                elif tool_name == "get_column_stats":
-                    col = tool_args.get("column_name", "")
-                    yield {"type": "step_start", "info": f"Memeriksa distribusi {col} di pasar"}
 
             # Check function response (tool result)
             fn_resp = getattr(part, "function_response", None)
@@ -337,8 +315,6 @@ Tugas Anda:
                         meta = f"Gagal: {payload.get('message', '')}"
                     else:
                         meta = f"{len(ctx.captured_results)} emiten ditemukan"
-                elif tool_name == "get_column_stats" and isinstance(payload, dict):
-                    meta = f"min {payload.get('min')} · rata-rata {payload.get('avg')} · maks {payload.get('max')}"
                 yield {"type": "step_end", "meta": meta}
 
             # Check text generation (Summary streaming tokens)

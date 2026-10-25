@@ -32,3 +32,6 @@ htmlcov/
 .gemini/
 .vscode/
 .idea/
+
+# Architecture documentation & diagram source files
+docs/
